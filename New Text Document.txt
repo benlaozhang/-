@@ -1,0 +1,48 @@
+import win32security
+import os
+
+
+'''
+对指定文件夹，针对特定的用户给与该用户这个文件夹不同的权限
+'''
+FILENAME = 'TEST' #文件夹路径
+
+
+'''
+1. 在Windows系统中，其是用一个安全描述符（Security Descriptors）的结构来保存其权限的设置信息，简称为SD
+   安全描述符由以下部分组成：对象所有者、其组、其自主访问控制列表（DACL）和其系统访问控制列表（SACL）
+2. 两个安全标识符(Security identifiers)，简称为SID，分别是OwnerSid和GroupSid. 所谓SID就是每次当我们
+   创建一个用户或一个组的时候，系统会分配给改用户或组一个唯一SID，当你重新安装系统后，也会得到一个唯一的SID。
+   SID是唯一的，不随用户的删除而分配到另外的用户使用。
+3. 一个DACL（Discretionary Access Control List），其指出了允许和拒绝某用户或用户组的存取控制列表。 
+   当一个进程需要访问安全对象，系统就会检查DACL来决定进程的访问权。如果一个对象没有DACL，那么就是说这个对象是任何人都可以拥有完全的访问权限。
+4. 一个SACL（System Access Control List），其指出了在该对象上的一组存取方式（如，读、写、运行等）的存取控制权限细节的列表。
+5. DACL（和SACL）本质上是条目列表，代表您在对象属性的安全选项卡上看到的内容。每个访问控制条目（ACE）都是用户/组和访问掩码之间的映射。
+   用户/组实际上是一个SID，一个域范围的系统标识符；访问掩码可能因对象而异，因为对文件有意义的事情可能不适用于命名管道或互斥体；
+   每个条目可以是允许条目或拒绝条目。
+'''
+# 获取所有者的信息
+sd = win32security.GetFileSecurity(FILENAME, win32security.OWNER_SECURITY_INFORMATION)
+owner_sid = sd.GetSecurityDescriptorOwner()
+name, domain, type = win32security.LookupAccountSid(None, owner_sid)
+
+print("Dir owned by %s\\%s" % (domain, name))
+
+# 获取用户组的信息
+sd = win32security.GetFileSecurity(FILENAME, win32security.DACL_SECURITY_INFORMATION)
+dacl = sd.GetSecurityDescriptorDacl()
+# 显示具有文件夹权限用户(组)数量
+ace_count = dacl.GetAceCount()
+print('Ace count:', ace_count)
+
+for i in range(0, ace_count):
+
+    rev, access, usersid = dacl.GetAce(i)
+    user, domain, type = win32security.LookupAccountSid('', usersid)
+    # print('User: {}/{}'.format(domain, user), rev, access)
+    if user=="xxxxxx":
+        sid, domain, type1 = win32security.LookupAccountName("", user)
+        print('sid: {}'.format(domain,sid),access)
+        # 我以为这里可以改权限，但是改不了
+        dacl.AddAccessAllowedAceEx(win32security.ACL_REVISION, 3, 1245631, sid)
+        dacl = sd.GetSecurityDescriptorDacl()
